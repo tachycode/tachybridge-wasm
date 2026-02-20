@@ -20,8 +20,8 @@ if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
   exit 1
 fi
 
-if [[ "${ALLOW_DIRTY:-0}" != "1" ]] && [[ -n "$(git status --porcelain)" ]]; then
-  echo "Working tree is not clean. Commit or stash changes before release." >&2
+if [[ "${ALLOW_DIRTY:-0}" != "1" ]] && [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+  echo "Working tree has tracked changes. Commit or stash before release." >&2
   echo "Set ALLOW_DIRTY=1 to bypass this check." >&2
   exit 1
 fi

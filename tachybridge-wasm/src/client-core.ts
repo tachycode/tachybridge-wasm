@@ -162,6 +162,15 @@ export class BridgeClientCore {
     const existing = this.subscriptions.get(topic);
     if (existing) {
       existing.callbacks.add(callback);
+      const nextCompression = options.compression;
+      const shouldResubscribe = existing.type !== type || existing.compression !== nextCompression;
+      if (!shouldResubscribe) {
+        return;
+      }
+
+      existing.type = type;
+      existing.compression = nextCompression;
+      await this.sendWithProtocol((protocol) => protocol.build_subscribe(topic, type, nextCompression));
       return;
     }
 
