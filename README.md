@@ -47,3 +47,9 @@ npm run test -w tachybridge-wasm
 npm pack --dry-run -w tachybridge-wasm
 npm publish -w tachybridge-wasm
 ```
+
+Or run the full release flow (version bump, build, test, dry-run pack, commit, tag, publish):
+
+```bash
+npm run release:wasm -- 0.1.1 latest
+```

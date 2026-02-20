@@ -9,3 +9,4 @@ npm-debug.log*
 coverage/
 **/coverage/
 *.log
+.npm-cache/
