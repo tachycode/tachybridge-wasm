@@ -1,0 +1,11 @@
+node_modules/
+**/node_modules/
+**/dist/
+**/target/
+.next/
+**/.next/
+.DS_Store
+npm-debug.log*
+coverage/
+**/coverage/
+*.log

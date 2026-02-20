@@ -1,0 +1,26 @@
+{
+  "name": "tachybridge-wasm-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "tachybridge-wasm",
+    "mockup-rosbridge",
+    "mockup-web",
+    "tachybridge-roslib-compat"
+  ],
+  "scripts": {
+    "build": "npm run build -w tachybridge-wasm && npm run build -w mockup-rosbridge && npm run build -w tachybridge-roslib-compat",
+    "test": "npm run test -w tachybridge-wasm && npm run test -w tachybridge-roslib-compat",
+    "lint": "npm run lint -w tachybridge-wasm && npm run lint -w mockup-rosbridge && npm run lint -w tachybridge-roslib-compat",
+    "mockup:start": "npm run build -w mockup-rosbridge && npm run start -w mockup-rosbridge",
+    "pack:check": "npm run pack:check -w tachybridge-wasm",
+    "web:dev": "npm run build -w tachybridge-wasm && npm run dev -w mockup-web",
+    "web:build": "npm run build -w tachybridge-wasm && npm run build -w mockup-web",
+    "web:test": "npm run test -w mockup-web",
+    "compat:build": "npm run build -w tachybridge-roslib-compat",
+    "compat:test": "npm run test -w tachybridge-roslib-compat"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

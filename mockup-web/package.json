@@ -1,0 +1,24 @@
+{
+  "name": "mockup-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "tachybridge-wasm": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.3",
+    "jsdom": "^27.4.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

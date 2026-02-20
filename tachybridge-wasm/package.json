@@ -1,0 +1,52 @@
+{
+  "name": "tachybridge-wasm",
+  "version": "0.1.0",
+  "description": "Rust/WASM-based ROS bridge client for topic/service/native action flows",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "Cargo.toml",
+    "src/lib.rs"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/browser.d.ts",
+      "browser": "./dist/browser.js",
+      "node": "./dist/node.js",
+      "default": "./dist/browser.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "default": "./dist/browser.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    }
+  },
+  "types": "./dist/browser.d.ts",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "./scripts/build-wasm.sh && tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "test": "vitest run --config vitest.config.ts",
+    "lint": "tsc --noEmit -p tsconfig.json && cargo fmt --check",
+    "pack:check": "npm pack --dry-run",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.9.2",
+    "vitest": "^4.0.3"
+  }
+}
