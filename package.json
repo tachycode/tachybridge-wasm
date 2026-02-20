@@ -19,7 +19,8 @@
     "web:test": "npm run test -w mockup-web",
     "compat:build": "npm run build -w tachybridge-roslib-compat",
     "compat:test": "npm run test -w tachybridge-roslib-compat",
-    "release:wasm": "./scripts/release-wasm.sh"
+    "release:wasm": "./scripts/release-wasm.sh",
+    "release:all": "./scripts/release-all.sh"
   },
   "engines": {
     "node": ">=20"

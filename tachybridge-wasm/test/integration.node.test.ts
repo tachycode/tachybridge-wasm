@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { BridgeClient } from "../src/node.js";
-import { createMockupRosbridgeServer, type MockupRosbridgeServer } from "../../mockup-rosbridge/src/server.js";
+import { createMockupRosbridgeServer, type MockupRosbridgeServer } from "../../mockup-rosbridge/src/server.ts";
 
 function waitFor<T>(predicate: () => T | undefined, timeoutMs = 3000): Promise<T> {
   const startedAt = Date.now();
@@ -62,6 +62,8 @@ describe.each([
 
   it("subscribe with cbor-raw compression returns raw bytes envelope", async () => {
     let rawMessage: Record<string, unknown> | undefined;
+
+    await client.unsubscribe("/mock/status");
 
     await client.subscribe(
       "/mock/status",

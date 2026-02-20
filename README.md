@@ -53,3 +53,9 @@ Or run the full release flow (version bump, build, test, dry-run pack, commit, t
 ```bash
 npm run release:wasm -- 0.1.1 latest
 ```
+
+To release both packages together with synchronized versions:
+
+```bash
+npm run release:all -- 0.1.1 latest
+```
