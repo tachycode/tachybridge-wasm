@@ -30,6 +30,9 @@ service.callService({ a: 1, b: 2 }, (res) => console.log(res));
 const action = new Action({ ros, name: "/arm/move", actionType: "demo/MoveArm" });
 const id = action.sendGoal({ x: 1 }, (result) => console.log(result));
 action.cancelGoal(id);
+
+const cli = await ros.executeCli("ros2 node list");
+console.log(cli.output);
 ```
 
 For CBOR binary frames:

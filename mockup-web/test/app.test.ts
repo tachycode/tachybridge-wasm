@@ -17,5 +17,8 @@ describe("mockup-web app skeleton", () => {
     expect(document.getElementById("compression-select")).not.toBeNull();
     expect(document.getElementById("smoke-json-btn")).not.toBeNull();
     expect(document.getElementById("smoke-cbor-btn")).not.toBeNull();
+    expect(document.getElementById("panel-cli")).not.toBeNull();
+    expect(document.getElementById("cli-send-btn")).not.toBeNull();
+    expect(document.getElementById("cli-command")).not.toBeNull();
   });
 });

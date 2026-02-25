@@ -13,6 +13,11 @@ export type RosOptions = {
   };
 };
 
+export type RosExecuteCliOptions = {
+  id?: string;
+  timeoutMs?: number;
+};
+
 export type TopicOptions = {
   ros: { _compatClient: unknown };
   name: string;

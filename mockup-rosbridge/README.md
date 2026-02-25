@@ -23,6 +23,8 @@ Default URL: `ws://127.0.0.1:9090`
 - `compression: "cbor-raw"` path with `msg: { bytes, secs, nsecs }`
 - Service
 - `call_service` success and forced-failure path (`args.force_fail=true`)
+- CLI
+- `execute_cli` returns `cli_response` (`ros2 node list` deterministic output)
 - Native action
 - `send_action_goal -> request -> feedback -> result(status:0)`
 - `cancel_action_goal -> cancel_action_result + result(status:2,canceled:true)`

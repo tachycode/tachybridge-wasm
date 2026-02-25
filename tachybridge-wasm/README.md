@@ -29,6 +29,7 @@ npm run build -w tachybridge-wasm
 - `advertise(topic, type)`
 - `publish(topic, msg)`
 - `callService(service, type, args, { id?, timeoutMs? })`
+- `executeCli(command, { id?, timeoutMs? })`
 - `sendActionGoal(options)`
 - `cancelActionGoal(options)`
 

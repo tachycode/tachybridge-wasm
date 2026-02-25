@@ -90,6 +90,14 @@ describe.each([
     ).rejects.toThrow(/forced_failure/);
   });
 
+  it("execute_cli returns cli_response payload", async () => {
+    const result = await client.executeCli("ros2 node list");
+    expect(result.op).toBe("cli_response");
+    expect(result.success).toBe(true);
+    expect(result.return_code).toBe(0);
+    expect(String(result.output)).toContain("/conversion_node");
+  });
+
   it("native action success flow", async () => {
     const feedbacks: Array<Record<string, unknown>> = [];
 

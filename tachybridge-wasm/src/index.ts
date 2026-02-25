@@ -12,6 +12,7 @@ export type {
   BridgeReconnectScheduledEvent,
   CallServiceOptions,
   CancelActionGoalOptions,
+  ExecuteCliOptions,
   JsonObject,
   SendActionGoalOptions,
   SubscribeOptions

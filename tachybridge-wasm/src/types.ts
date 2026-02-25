@@ -15,9 +15,23 @@ export type ServiceResponseMessage = {
   error?: string;
 };
 
-export type BridgeIncomingMessage = PublishMessage | ServiceResponseMessage | JsonObject;
+export type CliResponseMessage = {
+  op: "cli_response";
+  id?: string;
+  success?: boolean;
+  return_code?: number;
+  output?: string;
+  error?: string;
+};
+
+export type BridgeIncomingMessage = PublishMessage | ServiceResponseMessage | CliResponseMessage | JsonObject;
 
 export type CallServiceOptions = {
+  id?: string;
+  timeoutMs?: number;
+};
+
+export type ExecuteCliOptions = {
   id?: string;
   timeoutMs?: number;
 };

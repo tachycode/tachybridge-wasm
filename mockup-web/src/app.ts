@@ -71,6 +71,7 @@ type AppState = {
   received: string[];
   serviceResult: string;
   actionTimeline: string[];
+  cliTimeline: string[];
   rawLogs: string[];
   smokeResult: string;
 };
@@ -211,6 +212,21 @@ export function renderAppSkeleton(root: HTMLElement): void {
         <pre id="smoke-result" class="stream"></pre>
       </section>
 
+      <section class="panel" id="panel-cli">
+        <h2>6) CLI Bridge Test</h2>
+        <p class="hint">Send raw op message and inspect cli_response.</p>
+        <div class="grid2">
+          <label>CLI WS URL <input id="cli-ws-url" value="ws://127.0.0.1:9090" /></label>
+          <label>Operation <input id="cli-op" value="execute_cli" /></label>
+        </div>
+        <label>Command <input id="cli-command" value="ros2 node list" /></label>
+        <div class="row">
+          <button id="cli-send-btn">Send CLI</button>
+          <button id="cli-preset-node-list-btn">Preset: ros2 node list</button>
+        </div>
+        <pre id="cli-result" class="stream"></pre>
+      </section>
+
       <section class="panel" id="panel-logs">
         <h2>Raw Logs</h2>
         <div class="row">
@@ -233,6 +249,7 @@ export function mountMockupWeb(root: HTMLElement, deps: BridgeDeps): void {
     received: [],
     serviceResult: "",
     actionTimeline: [],
+    cliTimeline: [],
     rawLogs: [],
     smokeResult: ""
   };
@@ -253,6 +270,11 @@ export function mountMockupWeb(root: HTMLElement, deps: BridgeDeps): void {
   function pushAction(label: string, payload: unknown): void {
     state.actionTimeline = appendLine(state.actionTimeline, `${toLogTime()} ${label} ${JSON.stringify(payload)}`);
     renderList("action-stream", state.actionTimeline);
+  }
+
+  function pushCli(label: string, payload: unknown): void {
+    state.cliTimeline = appendLine(state.cliTimeline, `${toLogTime()} ${label} ${JSON.stringify(payload)}`);
+    renderList("cli-result", state.cliTimeline);
   }
 
   function clearActionBlobUrls(): void {
@@ -536,6 +558,64 @@ export function mountMockupWeb(root: HTMLElement, deps: BridgeDeps): void {
         state.smokeResult = `FAIL cbor+cbor-raw: ${String(error)}`;
       }
       setText("smoke-result", state.smokeResult);
+    })();
+  });
+
+  document.getElementById("cli-preset-node-list-btn")?.addEventListener("click", () => {
+    const opInput = document.getElementById("cli-op") as HTMLInputElement | null;
+    const cmdInput = document.getElementById("cli-command") as HTMLInputElement | null;
+    if (opInput) {
+      opInput.value = "execute_cli";
+    }
+    if (cmdInput) {
+      cmdInput.value = "ros2 node list";
+    }
+  });
+
+  document.getElementById("cli-send-btn")?.addEventListener("click", () => {
+    void (async () => {
+      const wsUrl = valueOf("cli-ws-url");
+      const op = valueOf("cli-op").trim() || "execute_cli";
+      const command = valueOf("cli-command").trim();
+      if (!command) {
+        pushCli("error", "command is empty");
+        return;
+      }
+
+      const request = { op, command };
+      pushCli("tx", request);
+
+      const response = await new Promise<JsonObject>((resolve, reject) => {
+        const ws = new WebSocket(wsUrl);
+        const timeout = setTimeout(() => {
+          ws.close();
+          reject(new Error("timeout waiting for cli_response"));
+        }, 7000);
+
+        ws.onopen = () => ws.send(JSON.stringify(request));
+        ws.onerror = () => {
+          clearTimeout(timeout);
+          ws.close();
+          reject(new Error("websocket error"));
+        };
+        ws.onmessage = (event) => {
+          clearTimeout(timeout);
+          ws.close();
+          try {
+            resolve(JSON.parse(String(event.data)) as JsonObject);
+          } catch (error) {
+            reject(new Error(`invalid json response: ${String(error)}`));
+          }
+        };
+      }).catch((error) => {
+        pushCli("error", String(error));
+        return undefined;
+      });
+
+      if (!response) {
+        return;
+      }
+      pushCli("rx", response);
     })();
   });
 }

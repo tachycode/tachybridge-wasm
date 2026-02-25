@@ -10,6 +10,7 @@ import type {
   BridgeReconnectOptions,
   CallServiceOptions,
   CancelActionGoalOptions,
+  ExecuteCliOptions,
   JsonObject,
   SendActionGoalOptions,
   SubscribeOptions,
@@ -39,6 +40,13 @@ type PendingAction = {
 
 type PendingActionCancel = {
   key: string;
+  resolve: (value: JsonObject) => void;
+  reject: (error: Error) => void;
+  timeout?: NodeJS.Timeout;
+};
+
+type PendingCliCall = {
+  id: string;
   resolve: (value: JsonObject) => void;
   reject: (error: Error) => void;
   timeout?: NodeJS.Timeout;
@@ -98,6 +106,7 @@ export class BridgeClientCore {
   private pendingActions = new Map<string, PendingAction>();
   private actionIdBySession = new Map<string, string>();
   private pendingActionCancels = new Map<string, PendingActionCancel>();
+  private pendingCliCalls = new Map<string, PendingCliCall>();
   private subscriptions = new Map<string, SubscriptionInfo>();
   private advertisedTopics = new Map<string, string>();
 
@@ -223,6 +232,40 @@ export class BridgeClientCore {
           clearTimeout(timeout);
         }
         this.pendingCalls.delete(id);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      });
+    });
+  }
+
+  async executeCli(command: string, options: ExecuteCliOptions = {}): Promise<JsonObject> {
+    const trimmed = command.trim();
+    if (!trimmed) {
+      throw new Error("executeCli command must not be empty");
+    }
+
+    const pendingId = options.id ?? randomId("cli");
+    const timeoutMs = options.timeoutMs ?? this.options.timeoutMs;
+
+    return new Promise<JsonObject>((resolve, reject) => {
+      const timeout =
+        typeof timeoutMs === "number" && timeoutMs > 0
+          ? setTimeout(() => {
+              this.pendingCliCalls.delete(pendingId);
+              reject(new Error(`CLI call timeout (${pendingId})`));
+            }, timeoutMs)
+          : undefined;
+
+      this.pendingCliCalls.set(pendingId, { id: pendingId, resolve, reject, timeout });
+
+      const message: JsonObject = options.id
+        ? { op: "execute_cli", command: trimmed, id: options.id }
+        : { op: "execute_cli", command: trimmed };
+
+      this.sendEnvelope(message).catch((error: unknown) => {
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+        this.pendingCliCalls.delete(pendingId);
         reject(error instanceof Error ? error : new Error(String(error)));
       });
     });
@@ -509,6 +552,25 @@ export class BridgeClientCore {
       return;
     }
 
+    if ((parsed as { op?: string }).op === "cli_response") {
+      const response = parsed as { id?: string; success?: boolean; return_code?: number; error?: string };
+      const pending = this.findPendingCliCall(response.id);
+      if (!pending) {
+        return;
+      }
+      if (pending.timeout) {
+        clearTimeout(pending.timeout);
+      }
+      this.pendingCliCalls.delete(pending.id);
+
+      if (response.success === false || (typeof response.return_code === "number" && response.return_code !== 0)) {
+        pending.reject(new Error(response.error ?? `CLI execution failed (code ${response.return_code ?? -1})`));
+        return;
+      }
+      pending.resolve(asRecord(parsed));
+      return;
+    }
+
     if ((parsed as { op?: string }).op === "cancel_action_result") {
       const response = parsed as { action?: string; result?: boolean; error?: string; session_id?: string };
       const key = `${response.action ?? ""}::${response.session_id ?? "default"}`;
@@ -660,12 +722,37 @@ export class BridgeClientCore {
       pendingCancel.reject(new Error("Action cancel interrupted by disconnect; retry after reconnect"));
     }
     this.pendingActionCancels.clear();
+
+    for (const pendingCli of this.pendingCliCalls.values()) {
+      if (pendingCli.timeout) {
+        clearTimeout(pendingCli.timeout);
+      }
+      pendingCli.reject(new Error("CLI request interrupted by disconnect; retry after reconnect"));
+    }
+    this.pendingCliCalls.clear();
   }
 
-  private async sendWithProtocol(build: (protocol: WasmProtocol) => JsonObject): Promise<void> {
+  private findPendingCliCall(id?: string): PendingCliCall | undefined {
+    if (id && this.pendingCliCalls.has(id)) {
+      return this.pendingCliCalls.get(id);
+    }
+    if (this.pendingCliCalls.size === 1) {
+      return this.pendingCliCalls.values().next().value;
+    }
+    return undefined;
+  }
+
+  private async sendEnvelope(message: JsonObject): Promise<void> {
     if (!this.ws || this.ws.readyState !== OPEN) {
       throw new Error("WebSocket is not connected");
     }
+    if (!hasValidOpEnvelope(message)) {
+      throw new Error("Failed to build a valid protocol message");
+    }
+    this.ws.send(this.codec.encode(message));
+  }
+
+  private async sendWithProtocol(build: (protocol: WasmProtocol) => JsonObject): Promise<void> {
     const protocol = await this.protocolPromise;
     let message = build(protocol);
 
@@ -678,6 +765,6 @@ export class BridgeClientCore {
       throw new Error("Failed to build a valid protocol message");
     }
 
-    this.ws.send(this.codec.encode(message));
+    await this.sendEnvelope(message);
   }
 }

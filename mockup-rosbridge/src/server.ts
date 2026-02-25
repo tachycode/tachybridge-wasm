@@ -7,6 +7,7 @@ type OpMessage = {
   topic?: string;
   service?: string;
   type?: string;
+  command?: string;
   action?: string;
   action_type?: string;
   msg?: Record<string, unknown>;
@@ -318,6 +319,48 @@ export function createMockupRosbridgeServer(port = 9090): Promise<MockupRosbridg
             echoed_args: message.args ?? {},
             advertised_topics: Array.from(advertised.keys())
           }
+        });
+        return;
+      }
+
+      if (message.op === "execute_cli") {
+        const command = (message.command ?? "").trim();
+        if (!command) {
+          send(ws, {
+            op: "cli_response",
+            success: false,
+            return_code: 2,
+            output: ""
+          });
+          return;
+        }
+
+        if (command === "ros2 node list") {
+          send(ws, {
+            op: "cli_response",
+            output:
+              "/conversion_node\n/cpp_rosbridge_server\n/curation_node\n/dataset_manager_node\n/habilis_communicator\n/launch_ros_11867\n/play_lerobot\n",
+            return_code: 0,
+            success: true
+          });
+          return;
+        }
+
+        if (command.includes("fail")) {
+          send(ws, {
+            op: "cli_response",
+            output: "",
+            return_code: 1,
+            success: false
+          });
+          return;
+        }
+
+        send(ws, {
+          op: "cli_response",
+          output: `[mockup-cli] executed: ${command}\n`,
+          return_code: 0,
+          success: true
         });
         return;
       }

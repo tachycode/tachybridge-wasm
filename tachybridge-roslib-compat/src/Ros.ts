@@ -1,6 +1,6 @@
 import { BridgeClient } from "tachybridge-wasm/node";
 import { TinyEmitter } from "./emitter.js";
-import type { JsonMap, RosOptions } from "./types.js";
+import type { JsonMap, RosExecuteCliOptions, RosOptions } from "./types.js";
 
 type TopicSubscriptionState = {
   type: string;
@@ -64,6 +64,14 @@ export default class Ros extends TinyEmitter {
   close(): void {
     this._compatClient.close();
     this._setConnected(false);
+  }
+
+  async executeCli(command: string, options: RosExecuteCliOptions = {}): Promise<JsonMap> {
+    return await (
+      this._compatClient as unknown as {
+        executeCli: (cmd: string, opts?: RosExecuteCliOptions) => Promise<JsonMap>;
+      }
+    ).executeCli(command, options);
   }
 
   async _ensureTopicSubscription(

@@ -82,6 +82,14 @@ describe("tachybridge-roslib-compat", () => {
     expect(result.echoed_args.a).toBe(1);
   });
 
+  it("Ros.executeCli returns cli_response payload", async () => {
+    const result = await ros.executeCli("ros2 node list");
+    expect(result.op).toBe("cli_response");
+    expect(result.success).toBe(true);
+    expect(result.return_code).toBe(0);
+    expect(String(result.output)).toContain("/conversion_node");
+  });
+
   it("action goal/cancel works with roslib-style API", async () => {
     const action = new Action<{ x: number }, { progress: number }, { success: boolean }>({
       ros,
