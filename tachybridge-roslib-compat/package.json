@@ -1,6 +1,6 @@
 {
   "name": "tachybridge-roslib-compat",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "roslib-style compatibility adapter powered by tachybridge-wasm",
   "license": "MIT",
   "type": "module",
@@ -19,7 +19,7 @@
     "lint": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "tachybridge-wasm": "^0.1.2"
+    "tachybridge-wasm": "^0.1.3"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
