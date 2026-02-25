@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createMockupRosbridgeServer, type MockupRosbridgeServer } from "../../mockup-rosbridge/src/server.ts";
-import { Action, Ros, Service, Topic } from "../src/index.js";
+import { Action, Cli, Ros, Service, Topic } from "../src/index.js";
 
 function waitFor<T>(predicate: () => T | undefined, timeoutMs = 3000): Promise<T> {
   const startedAt = Date.now();
@@ -88,6 +88,20 @@ describe("tachybridge-roslib-compat", () => {
     expect(result.success).toBe(true);
     expect(result.return_code).toBe(0);
     expect(String(result.output)).toContain("/conversion_node");
+  });
+
+  it("Cli wrapper supports callback and promise styles", async () => {
+    const cli = new Cli({ ros, command: "ros2 node list" });
+
+    const callbackResult = await new Promise<Record<string, unknown>>((resolve, reject) => {
+      cli.run(resolve, reject);
+    });
+    expect(callbackResult.op).toBe("cli_response");
+    expect(callbackResult.success).toBe(true);
+
+    const promiseResult = await cli.execute("ros2 node list");
+    expect(promiseResult.op).toBe("cli_response");
+    expect(promiseResult.return_code).toBe(0);
   });
 
   it("action goal/cancel works with roslib-style API", async () => {

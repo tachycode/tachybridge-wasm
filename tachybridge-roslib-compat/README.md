@@ -16,7 +16,7 @@ npm install tachybridge-roslib-compat
 ## Example
 
 ```ts
-import { Ros, Topic, Service, Action } from "tachybridge-roslib-compat";
+import { Ros, Topic, Service, Action, Cli } from "tachybridge-roslib-compat";
 
 const ros = new Ros({ url: "ws://127.0.0.1:9090" });
 
@@ -31,8 +31,11 @@ const action = new Action({ ros, name: "/arm/move", actionType: "demo/MoveArm" }
 const id = action.sendGoal({ x: 1 }, (result) => console.log(result));
 action.cancelGoal(id);
 
-const cli = await ros.executeCli("ros2 node list");
-console.log(cli.output);
+const cli = new Cli({ ros, command: "ros2 node list" });
+cli.run((res) => console.log(res.output));
+
+const cliRes = await cli.execute("ros2 node list");
+console.log(cliRes.output);
 ```
 
 For CBOR binary frames:
@@ -46,6 +49,25 @@ const ros = new Ros({ url: "ws://127.0.0.1:9090", codec: "cbor" });
 - Not a full 1:1 implementation of all roslib APIs
 - `ActionClient/Goal` object model is not included
 - `topic.compression` is forwarded to subscribe op (`none/png/cbor/cbor-raw`)
+
+## CLI Wrapping
+
+Use `Cli` for roslib-style callback usage:
+
+```ts
+const cli = new Cli({ ros, command: "ros2 node list" });
+cli.run(
+  (response) => console.log(response.output),
+  (error) => console.error(error)
+);
+```
+
+Or use promise style:
+
+```ts
+const response = await cli.execute("ros2 node list");
+console.log(response.success, response.return_code, response.output);
+```
 
 ## Test
 

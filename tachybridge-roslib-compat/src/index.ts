@@ -3,6 +3,7 @@ export { default as Topic } from "./Topic.js";
 export { default as Service } from "./Service.js";
 export { default as Param } from "./Param.js";
 export { default as Action } from "./Action.js";
+export { default as Cli } from "./Cli.js";
 export { ServiceRequest, ServiceResponse } from "./messages.js";
 
 import Ros from "./Ros.js";
@@ -10,6 +11,7 @@ import Topic from "./Topic.js";
 import Service from "./Service.js";
 import Param from "./Param.js";
 import Action from "./Action.js";
+import Cli from "./Cli.js";
 import { ServiceRequest, ServiceResponse } from "./messages.js";
 
 const ROSLIB = {
@@ -18,6 +20,7 @@ const ROSLIB = {
   Service,
   Param,
   Action,
+  Cli,
   ServiceRequest,
   ServiceResponse
 };

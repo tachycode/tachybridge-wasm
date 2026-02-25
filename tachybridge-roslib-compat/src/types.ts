@@ -41,3 +41,8 @@ export type ActionOptions = {
   name: string;
   actionType: string;
 };
+
+export type CliOptions = {
+  ros: { _compatClient: unknown };
+  command?: string;
+};
