@@ -10,3 +10,10 @@ coverage/
 **/coverage/
 *.log
 .npm-cache/
+
+# Build artifacts that get copied into src/wasm/ at build time so vitest can
+# resolve runtime imports — never commit them.
+**/src/wasm/
+
+# npm pack output
+*.tgz

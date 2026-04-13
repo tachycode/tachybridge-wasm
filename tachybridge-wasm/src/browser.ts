@@ -1,5 +1,13 @@
 import { BridgeClientCore } from "./client-core.js";
 import type { BridgeClientOptions, WasmProtocol, WebSocketLike } from "./types.js";
+// Static imports — every modern bundler resolves these without extra config.
+// `bridge_wasm.js` is the wasm-pack web glue (post-processed to remove its
+// static `new URL(..., import.meta.url)` asset reference).
+// `bridge_wasm_inline.js` exports the .wasm bytes as a base64 string so we
+// never have to fetch the binary at runtime.
+import init, * as wasmModule from "./wasm/web/bridge_wasm.js";
+import { wasmBase64 } from "./wasm/web/bridge_wasm_inline.js";
+
 export { autoCodec, cborCodec, jsonCodec, resolveCodec } from "./codec.js";
 export type {
   BridgeCodec,
@@ -11,31 +19,31 @@ export type {
   BridgeReconnectScheduledEvent
 } from "./types.js";
 
+let wasmReady: Promise<WasmProtocol> | null = null;
+
+function decodeBase64(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
 async function loadBrowserProtocol(): Promise<WasmProtocol> {
-  const moduleUrl = new URL("./wasm/web/bridge_wasm.js", import.meta.url).href;
-  const wasmModule = (await import(moduleUrl)) as {
-    default: (modulePath?: string | URL) => Promise<void>;
-    build_subscribe: WasmProtocol["build_subscribe"];
-    build_unsubscribe: WasmProtocol["build_unsubscribe"];
-    build_advertise: WasmProtocol["build_advertise"];
-    build_publish: WasmProtocol["build_publish"];
-    build_call_service: WasmProtocol["build_call_service"];
-    build_send_action_goal: WasmProtocol["build_send_action_goal"];
-    build_cancel_action_goal: WasmProtocol["build_cancel_action_goal"];
-  };
-
-  const wasmBinaryUrl = new URL("./wasm/web/bridge_wasm_bg.wasm", import.meta.url).href;
-  await wasmModule.default(wasmBinaryUrl);
-
-  return {
-    build_subscribe: wasmModule.build_subscribe,
-    build_unsubscribe: wasmModule.build_unsubscribe,
-    build_advertise: wasmModule.build_advertise,
-    build_publish: wasmModule.build_publish,
-    build_call_service: wasmModule.build_call_service,
-    build_send_action_goal: wasmModule.build_send_action_goal,
-    build_cancel_action_goal: wasmModule.build_cancel_action_goal
-  };
+  if (!wasmReady) {
+    wasmReady = (async () => {
+      await init({ module_or_path: decodeBase64(wasmBase64) });
+      return {
+        build_subscribe: wasmModule.build_subscribe,
+        build_unsubscribe: wasmModule.build_unsubscribe,
+        build_advertise: wasmModule.build_advertise,
+        build_publish: wasmModule.build_publish,
+        build_call_service: wasmModule.build_call_service,
+        build_send_action_goal: wasmModule.build_send_action_goal,
+        build_cancel_action_goal: wasmModule.build_cancel_action_goal
+      };
+    })();
+  }
+  return wasmReady;
 }
 
 function browserWebSocketFactory(url: string): WebSocketLike {
