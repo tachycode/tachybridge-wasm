@@ -14,10 +14,18 @@ npm install tachybridge-wasm
 
 Node.js: `>=20`
 
-## Build
+No bundler-specific configuration is required. The browser entry inlines the
+WASM module as base64 so any modern bundler (Next.js / Turbopack / Vite /
+Webpack / Rollup / esbuild / Parcel) resolves it without aliases, plugins,
+or post-install hooks.
 
-```bash
-npm run build -w tachybridge-wasm
+## Usage
+
+```ts
+import { BridgeClient } from "tachybridge-wasm";
+
+const client = new BridgeClient({ codec: "json", timeoutMs: 5000 });
+await client.connect("ws://127.0.0.1:9090");
 ```
 
 ## API
@@ -39,13 +47,6 @@ npm run build -w tachybridge-wasm
 - Optional: `cbor` (binary frame)
 - Optional: `auto` (decode by payload type)
 
-```ts
-import { BridgeClient } from "tachybridge-wasm/node";
-
-const client = new BridgeClient({ codec: "json", timeoutMs: 5000 });
-await client.connect("ws://127.0.0.1:9090");
-```
-
 ## Compatibility Notes
 
 - Target protocol: tachybridge
@@ -56,11 +57,3 @@ await client.connect("ws://127.0.0.1:9090");
 
 - Browser: `import { BridgeClient } from "tachybridge-wasm"`
 - Node: `import { BridgeClient } from "tachybridge-wasm/node"`
-
-## Pre-Publish Checklist
-
-```bash
-npm run build -w tachybridge-wasm
-npm run test -w tachybridge-wasm
-npm pack --dry-run -w tachybridge-wasm
-```
