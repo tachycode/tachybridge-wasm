@@ -1,6 +1,6 @@
 {
   "name": "tachybridge-mockup-rosbridge",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Embeddable deterministic rosbridge mock server for end-to-end tests and local dev — attaches to any http/https.Server.",
   "license": "MIT",
   "type": "module",

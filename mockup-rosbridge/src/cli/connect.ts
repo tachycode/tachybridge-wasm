@@ -1,21 +1,48 @@
+import { existsSync } from "node:fs";
+import { dirname, parse, resolve } from "node:path";
+
 import WebSocket from "ws";
 
 const DEFAULT_PROTOCOL = "ws";
 const DEFAULT_HOST = "localhost";
 export const DEFAULT_PORT = 9090;
 
+// Walks up from `startDir` toward the nearest `.git` looking for the
+// Next.js dev TLS cert pair under `certificates/`. Returns the discovered
+// pair when both files exist — clients can default to `wss://` and the
+// server subcommand can boot https without explicit flags.
+export function detectLocalTls(
+  startDir: string = process.cwd(),
+): { cert: string; key: string } | undefined {
+  const fsRoot = parse(startDir).root;
+  let dir = resolve(startDir);
+  while (true) {
+    const cert = resolve(dir, "certificates/localhost.pem");
+    const key = resolve(dir, "certificates/localhost-key.pem");
+    if (existsSync(cert) && existsSync(key)) return { cert, key };
+    if (existsSync(resolve(dir, ".git"))) break;
+    const parent = dirname(dir);
+    if (parent === dir || dir === fsRoot) break;
+    dir = parent;
+  }
+  return undefined;
+}
+
 // URL precedence (highest first):
 //   --url <url>
 //   TACHYBRIDGE_MOCK_URL env (preferred)
 //   MOCK_ROS_URL env (legacy alias)
-//   --port <n>  → ws://localhost:<n>
-//   ws://localhost:9090
+//   --port <n>  → ws[s]://localhost:<n>
+//   ws[s]://localhost:9090
+// The protocol auto-upgrades to `wss` when the local Next.js dev cert pair
+// is discoverable via detectLocalTls(); otherwise plain `ws`.
 export function resolveUrl(opts: { port?: number; url?: string } = {}): string {
   if (opts.url) return opts.url;
   const fromEnv = process.env.TACHYBRIDGE_MOCK_URL ?? process.env.MOCK_ROS_URL;
   if (fromEnv) return fromEnv;
   const port = opts.port ?? DEFAULT_PORT;
-  return `${DEFAULT_PROTOCOL}://${DEFAULT_HOST}:${port}`;
+  const protocol = detectLocalTls() ? "wss" : DEFAULT_PROTOCOL;
+  return `${protocol}://${DEFAULT_HOST}:${port}`;
 }
 
 export type ParsedFlags = {
