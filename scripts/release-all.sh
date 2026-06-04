@@ -8,8 +8,11 @@ VERSION="${1:-}"
 NPM_DIST_TAG="${2:-latest}"
 WASM_PKG="tachybridge-wasm"
 COMPAT_PKG="tachybridge-roslib-compat"
+MOCKUP_PKG="tachybridge-mockup-rosbridge"
+MOCKUP_DIR="mockup-rosbridge"
 WASM_TAG="${WASM_PKG}-v${VERSION}"
 COMPAT_TAG="${COMPAT_PKG}-v${VERSION}"
+MOCKUP_TAG="${MOCKUP_PKG}-v${VERSION}"
 
 if [[ -z "$VERSION" ]]; then
   echo "Usage: npm run release:all -- <version> [npm-dist-tag]" >&2
@@ -28,14 +31,12 @@ if [[ "${ALLOW_DIRTY:-0}" != "1" ]] && [[ -n "$(git status --porcelain --untrack
   exit 1
 fi
 
-if git rev-parse "$WASM_TAG" >/dev/null 2>&1; then
-  echo "Tag already exists: $WASM_TAG" >&2
-  exit 1
-fi
-if git rev-parse "$COMPAT_TAG" >/dev/null 2>&1; then
-  echo "Tag already exists: $COMPAT_TAG" >&2
-  exit 1
-fi
+for tag in "$WASM_TAG" "$COMPAT_TAG" "$MOCKUP_TAG"; do
+  if git rev-parse "$tag" >/dev/null 2>&1; then
+    echo "Tag already exists: $tag" >&2
+    exit 1
+  fi
+done
 
 if [[ ! -d node_modules ]]; then
   echo "Installing dependencies..."
@@ -50,6 +51,9 @@ npm version "$VERSION" --no-git-tag-version -w "$WASM_PKG"
 echo "Bumping ${COMPAT_PKG} version -> ${VERSION}"
 npm version "$VERSION" --no-git-tag-version -w "$COMPAT_PKG"
 
+echo "Bumping ${MOCKUP_PKG} version -> ${VERSION}"
+npm version "$VERSION" --no-git-tag-version -w "$MOCKUP_PKG"
+
 echo "Syncing ${COMPAT_PKG} dependency on ${WASM_PKG}"
 npm pkg set "dependencies.${WASM_PKG}=^${VERSION}" -w "$COMPAT_PKG"
 
@@ -59,6 +63,13 @@ echo "Testing ${WASM_PKG}"
 npm run test -w "$WASM_PKG"
 echo "Dry-run pack check: ${WASM_PKG}"
 npm pack --dry-run -w "$WASM_PKG"
+
+echo "Building ${MOCKUP_PKG}"
+npm run build -w "$MOCKUP_PKG"
+echo "Testing ${MOCKUP_PKG}"
+npm run test -w "$MOCKUP_PKG"
+echo "Dry-run pack check: ${MOCKUP_PKG}"
+npm pack --dry-run -w "$MOCKUP_PKG"
 
 echo "Building ${COMPAT_PKG}"
 npm run build -w "$COMPAT_PKG"
@@ -71,15 +82,20 @@ echo "Committing release changes"
 git add \
   "$WASM_PKG/package.json" \
   "$COMPAT_PKG/package.json" \
+  "$MOCKUP_DIR/package.json" \
   package-lock.json
-git commit -m "release: ${WASM_PKG} + ${COMPAT_PKG} v${VERSION}"
+git commit -m "release: ${WASM_PKG} + ${MOCKUP_PKG} + ${COMPAT_PKG} v${VERSION}"
 
 echo "Creating git tags"
 git tag -a "$WASM_TAG" -m "${WASM_PKG} v${VERSION}"
+git tag -a "$MOCKUP_TAG" -m "${MOCKUP_PKG} v${VERSION}"
 git tag -a "$COMPAT_TAG" -m "${COMPAT_PKG} v${VERSION}"
 
 echo "Publishing ${WASM_PKG}@${VERSION} (dist-tag: ${NPM_DIST_TAG})"
 npm publish -w "$WASM_PKG" --tag "$NPM_DIST_TAG"
+
+echo "Publishing ${MOCKUP_PKG}@${VERSION} (dist-tag: ${NPM_DIST_TAG})"
+npm publish -w "$MOCKUP_PKG" --tag "$NPM_DIST_TAG"
 
 echo "Publishing ${COMPAT_PKG}@${VERSION} (dist-tag: ${NPM_DIST_TAG})"
 npm publish -w "$COMPAT_PKG" --tag "$NPM_DIST_TAG"
