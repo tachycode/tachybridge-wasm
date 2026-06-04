@@ -1,4 +1,5 @@
 import { createServer as createHttpServer, type Server as HttpServer } from "node:http";
+import { createServer as createHttpsServer, type Server as HttpsServer } from "node:https";
 import { existsSync, readFileSync, watch as fsWatch, type FSWatcher } from "node:fs";
 import { dirname, isAbsolute, parse, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -12,13 +13,16 @@ import type {
   TopicStream,
 } from "../types.js";
 
-import { DEFAULT_PORT } from "./connect.js";
+import { DEFAULT_PORT, detectLocalTls } from "./connect.js";
+
+type TlsPair = { cert: string; key: string };
 
 type ParsedArgs = {
   port: number;
   host: string;
   handlersPath?: string;
   watch: boolean | "auto";
+  tls: TlsPair | "auto" | false;
   help: boolean;
 };
 
@@ -71,6 +75,7 @@ function parseArgs(args: string[]): ParsedArgs {
     host: "0.0.0.0",
     handlersPath: undefined,
     watch: "auto",
+    tls: "auto",
     help: false,
   };
   for (let i = 0; i < args.length; i++) {
@@ -95,6 +100,17 @@ function parseArgs(args: string[]): ParsedArgs {
       result.watch = true;
     } else if (arg === "--no-watch") {
       result.watch = false;
+    } else if (arg === "--tls") {
+      const value = args[++i];
+      if (!value) usage(`${arg} requires <cert>,<key>`, 1);
+      const [cert, key] = value.split(",");
+      if (!cert || !key) usage(`--tls expects <cert>,<key>`, 1);
+      result.tls = {
+        cert: isAbsolute(cert) ? cert : resolve(process.cwd(), cert),
+        key: isAbsolute(key) ? key : resolve(process.cwd(), key),
+      };
+    } else if (arg === "--no-tls") {
+      result.tls = false;
     } else {
       usage(`unknown argument: ${arg}`, 1);
     }
@@ -121,6 +137,10 @@ function usage(message?: string, exitCode = 0): never {
   console.error("                   walking up from cwd to the nearest .git directory");
   console.error("  --watch          Force handler hot-reload (default: on when handlers found)");
   console.error("  --no-watch       Disable hot-reload");
+  console.error("  --tls <c>,<k>    Use these cert/key files (boots https://, serves wss://)");
+  console.error("                   If omitted, auto-detects certificates/localhost.{pem,-key.pem}");
+  console.error("                   in the same walk-up path used for handler discovery");
+  console.error("  --no-tls         Force plain ws:// even when certificates are present");
   process.exit(exitCode);
 }
 
@@ -180,7 +200,7 @@ function modulesToOptions(mod: HandlersModule): BridgeServerOptions {
 }
 
 async function startBridge(
-  httpServer: HttpServer,
+  httpServer: HttpServer | HttpsServer,
   handlersPath: string | undefined,
   bustCache: boolean,
 ): Promise<BridgeServer> {
@@ -192,6 +212,12 @@ async function startBridge(
   return bridge;
 }
 
+function resolveTls(opt: ParsedArgs["tls"]): TlsPair | undefined {
+  if (opt === false) return undefined;
+  if (opt === "auto") return detectLocalTls();
+  return opt;
+}
+
 export async function run(args: string[]): Promise<void> {
   const opts = parseArgs(args);
   if (opts.help) usage(undefined, 0);
@@ -200,13 +226,20 @@ export async function run(args: string[]): Promise<void> {
     console.error("[tachybridge-mock] --watch has no effect without handlers; ignoring");
   }
 
-  const httpServer = createHttpServer();
+  const tls = resolveTls(opts.tls);
+  const httpServer: HttpServer | HttpsServer = tls
+    ? createHttpsServer({ cert: readFileSync(tls.cert), key: readFileSync(tls.key) })
+    : createHttpServer();
   let bridge = await startBridge(httpServer, opts.handlersPath, false);
 
   await new Promise<void>((resolveListen) => {
     httpServer.listen(opts.port, opts.host, () => resolveListen());
   });
-  console.log(`[tachybridge-mock] listening on ws://${opts.host}:${opts.port}`);
+  const scheme = tls ? "wss" : "ws";
+  console.log(`[tachybridge-mock] listening on ${scheme}://${opts.host}:${opts.port}`);
+  if (tls) {
+    console.log(`[tachybridge-mock] TLS: ${tls.cert}`);
+  }
   if (opts.handlersPath) {
     console.log(`[tachybridge-mock] handlers: ${opts.handlersPath}${watch ? " (watching)" : ""}`);
   } else {
