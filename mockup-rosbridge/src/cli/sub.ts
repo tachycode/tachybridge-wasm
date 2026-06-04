@@ -1,16 +1,17 @@
-import { connect, decodeFrame, resolveUrl } from "./connect.js";
+import { connect, decodeFrame, parseFlags } from "./connect.js";
 
 export function run(args: string[]): void {
-  const [topic, type] = args;
+  const { url, positional } = parseFlags(args);
+  const [topic, type] = positional;
 
   if (!topic) {
-    console.error("usage: tachybridge-mock sub <topic> [type]");
+    console.error("usage: tachybridge-mock sub [--port n] [--url u] <topic> [type]");
     console.error("example: tachybridge-mock sub /rosout");
     process.exit(1);
   }
 
   const messageType = type ?? "std_msgs/String";
-  const ws = connect();
+  const ws = connect(url);
 
   ws.on("open", () => {
     ws.send(JSON.stringify({ op: "subscribe", topic, type: messageType }));
@@ -27,7 +28,7 @@ export function run(args: string[]): void {
   });
 
   ws.on("error", (err) => {
-    console.error(`[tachybridge-mock] sub connect ${resolveUrl()} failed: ${err.message}`);
+    console.error(`[tachybridge-mock] sub connect ${url} failed: ${err.message}`);
     process.exit(1);
   });
 
