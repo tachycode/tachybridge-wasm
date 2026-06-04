@@ -239,3 +239,34 @@ npm run mockup:start
 ```
 
 Default URL: `ws://127.0.0.1:9090`
+
+## CLI
+
+The package ships a `tachybridge-mock` bin for ad-hoc protocol interaction
+against any running mock or rosbridge-compatible server. Subcommands speak
+the rosbridge JSON protocol over a single WebSocket connection.
+
+```bash
+# from any consumer that depends on this package
+npx tachybridge-mock pub <topic> <json-msg> [type]
+npx tachybridge-mock sub <topic> [type]
+npx tachybridge-mock call <service> [json-args] [type]
+npx tachybridge-mock advertise <service> [json-response] [type]
+```
+
+| subcommand | behaviour |
+| --- | --- |
+| `pub` | Advertise the topic, publish the message once, unadvertise, exit. |
+| `sub` | Subscribe and print every incoming message until `SIGINT`. |
+| `call` | Issue a `call_service` and print the response (or status error). Exits when the response is received or after `TACHYBRIDGE_MOCK_TIMEOUT_MS`. |
+| `advertise` | `advertise_service` and reply to every forwarded call with the given JSON until `SIGINT`. Pairs with `call` for cross-client service flows. |
+
+### Environment overrides
+
+| Variable | Default | Used by |
+| --- | --- | --- |
+| `TACHYBRIDGE_MOCK_URL` | `wss://localhost:9090` | All subcommands. Override the WebSocket URL (use `ws://` for plain HTTP). |
+| `TACHYBRIDGE_MOCK_TIMEOUT_MS` | `5000` | `call` subcommand only. |
+
+The CLI accepts self-signed TLS certificates without verification — the
+intended use is local development against a mock with a localhost cert.
