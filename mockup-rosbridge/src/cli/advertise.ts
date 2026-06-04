@@ -1,10 +1,13 @@
-import { connect, decodeFrame, parseJsonArg, resolveUrl } from "./connect.js";
+import { connect, decodeFrame, parseFlags, parseJsonArg } from "./connect.js";
 
 export function run(args: string[]): void {
-  const [service, responseRaw, type] = args;
+  const { url, positional } = parseFlags(args);
+  const [service, responseRaw, type] = positional;
 
   if (!service) {
-    console.error("usage: tachybridge-mock advertise <service> [json-response] [type]");
+    console.error(
+      "usage: tachybridge-mock advertise [--port n] [--url u] <service> [json-response] [type]",
+    );
     console.error("example: tachybridge-mock advertise /my/svc '{\"success\":true}'");
     process.exit(1);
   }
@@ -13,7 +16,7 @@ export function run(args: string[]): void {
     ? parseJsonArg(responseRaw, "[json-response]")
     : { success: true, message: "ok from tachybridge-mock advertise" };
   const serviceType = type ?? "std_srvs/srv/Trigger";
-  const ws = connect();
+  const ws = connect(url);
 
   ws.on("open", () => {
     ws.send(JSON.stringify({ op: "advertise_service", service, type: serviceType }));
@@ -42,7 +45,7 @@ export function run(args: string[]): void {
   });
 
   ws.on("error", (err) => {
-    console.error(`[tachybridge-mock] advertise connect ${resolveUrl()} failed: ${err.message}`);
+    console.error(`[tachybridge-mock] advertise connect ${url} failed: ${err.message}`);
     process.exit(1);
   });
 

@@ -242,17 +242,22 @@ Default URL: `ws://127.0.0.1:9090`
 
 ## CLI
 
-The package ships a `tachybridge-mock` bin for ad-hoc protocol interaction
-against any running mock or rosbridge-compatible server. Subcommands speak
-the rosbridge JSON protocol over a single WebSocket connection.
+The package ships a `tachybridge-mock` bin with five subcommands. Four are
+clients (`pub`, `sub`, `call`, `advertise`) that speak the rosbridge JSON
+protocol over a single WebSocket; one runs an embedded server (`server`).
 
 ```bash
-# from any consumer that depends on this package
+# clients (default URL ws://localhost:9090)
 npx tachybridge-mock pub <topic> <json-msg> [type]
 npx tachybridge-mock sub <topic> [type]
 npx tachybridge-mock call <service> [json-args] [type]
 npx tachybridge-mock advertise <service> [json-response] [type]
+
+# embedded server (auto-discovers config — see below)
+npx tachybridge-mock server [--port n] [--host h] [--handlers <path>] [--no-watch]
 ```
+
+### Client subcommands
 
 | subcommand | behaviour |
 | --- | --- |
@@ -261,12 +266,69 @@ npx tachybridge-mock advertise <service> [json-response] [type]
 | `call` | Issue a `call_service` and print the response (or status error). Exits when the response is received or after `TACHYBRIDGE_MOCK_TIMEOUT_MS`. |
 | `advertise` | `advertise_service` and reply to every forwarded call with the given JSON until `SIGINT`. Pairs with `call` for cross-client service flows. |
 
+All clients accept `--port <n>` (overrides the port on `ws://localhost`) and
+`--url <u>` (overrides the full WebSocket URL). The CLI accepts self-signed
+TLS certificates without verification, so pointing at a local `wss://`
+endpoint also works.
+
+### `server` subcommand
+
+Runs the same `createBridgeServer` factory the library exports, with handler
+configuration loaded from a consumer file. Listens on plain HTTP — bring
+your own TLS termination if you need `wss://`.
+
+Flags:
+
+- `--port <n>` (default `9090`)
+- `--host <h>` (default `0.0.0.0`)
+- `--handlers <path>` — module to load. If omitted, auto-discovery runs.
+- `--watch` / `--no-watch` — handler hot reload. Default: on when handlers
+  are found, off otherwise.
+
+#### Config discovery (cosmiconfig-style)
+
+When `--handlers` is omitted, the bin walks up from cwd toward the nearest
+`.git` directory and at each level looks for, in order:
+
+1. `tachybridge-mock.config.ts`
+2. `tachybridge-mock.config.mjs`
+3. `tachybridge-mock.config.js`
+4. `tachybridge-mock.config.cjs`
+5. `package.json` with a `"tachybridgeMock"` string field pointing at a
+   module path
+
+The first hit wins. `.ts` configs require `tsx` installed locally — for
+zero-tooling setups, prefer `.mjs`.
+
+#### Config file shape
+
+The discovered module is `await import()`-ed; any of these named exports are
+picked up and forwarded into `BridgeServerOptions`:
+
+```js
+// tachybridge-mock.config.mjs
+export const services = {
+  "/my/service": (args) => ({ success: true, echo: args }),
+};
+
+export const topicStreams = [
+  { topic: "/heartbeat", type: "std_msgs/String", interval: 1000, make: () => ({ data: "tick" }) },
+];
+
+export const defaultServiceResponse = (args) => ({ success: true, args });
+
+export const actions = {
+  // "demo/MoveArm": (ctx) => { ... },
+};
+
+export const cliExecutor = async (command) => ({ output: command, return_code: 0, success: true });
+```
+
+Missing exports fall through to the library's deterministic defaults.
+
 ### Environment overrides
 
 | Variable | Default | Used by |
 | --- | --- | --- |
-| `TACHYBRIDGE_MOCK_URL` | `wss://localhost:9090` | All subcommands. Override the WebSocket URL (use `ws://` for plain HTTP). |
+| `TACHYBRIDGE_MOCK_URL` | `ws://localhost:9090` | Client subcommands. Overrides `--port`. |
 | `TACHYBRIDGE_MOCK_TIMEOUT_MS` | `5000` | `call` subcommand only. |
-
-The CLI accepts self-signed TLS certificates without verification — the
-intended use is local development against a mock with a localhost cert.

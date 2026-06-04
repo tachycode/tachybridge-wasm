@@ -1,22 +1,22 @@
-import { connect, parseJsonArg, resolveUrl } from "./connect.js";
+import { connect, parseFlags, parseJsonArg } from "./connect.js";
 
 export function run(args: string[]): void {
-  const [topic, payloadRaw, type] = args;
+  const { url, positional } = parseFlags(args);
+  const [topic, payloadRaw, type] = positional;
 
   if (!topic || !payloadRaw) {
-    console.error("usage: tachybridge-mock pub <topic> <json-msg> [type]");
+    console.error("usage: tachybridge-mock pub [--port n] [--url u] <topic> <json-msg> [type]");
     console.error("example: tachybridge-mock pub /chatter '{\"data\":\"hi\"}'");
     process.exit(1);
   }
 
   const msg = parseJsonArg(payloadRaw, "<json-msg>");
   const messageType = type ?? "std_msgs/String";
-  const ws = connect();
+  const ws = connect(url);
 
   ws.on("open", () => {
     ws.send(JSON.stringify({ op: "advertise", topic, type: messageType }));
     ws.send(JSON.stringify({ op: "publish", topic, msg }));
-    // Give the server a tick to flush before unadvertising/closing.
     setTimeout(() => {
       ws.send(JSON.stringify({ op: "unadvertise", topic }));
       ws.close();
@@ -25,7 +25,7 @@ export function run(args: string[]): void {
   });
 
   ws.on("error", (err) => {
-    console.error(`[tachybridge-mock] pub connect ${resolveUrl()} failed: ${err.message}`);
+    console.error(`[tachybridge-mock] pub connect ${url} failed: ${err.message}`);
     process.exit(1);
   });
 }

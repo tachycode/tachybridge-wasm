@@ -1,18 +1,21 @@
-import { connect, decodeFrame, parseJsonArg, resolveUrl } from "./connect.js";
+import { connect, decodeFrame, parseFlags, parseJsonArg } from "./connect.js";
 
 export function run(args: string[]): void {
-  const [service, argsRaw, type] = args;
+  const { url, positional } = parseFlags(args);
+  const [service, argsRaw, type] = positional;
 
   if (!service) {
-    console.error("usage: tachybridge-mock call <service> [json-args] [type]");
+    console.error("usage: tachybridge-mock call [--port n] [--url u] <service> [json-args] [type]");
     console.error("example: tachybridge-mock call /my/service '{\"a\":1}'");
     process.exit(1);
   }
 
   const callArgs = parseJsonArg(argsRaw, "[json-args]");
   const id = `cli-${Date.now()}`;
-  const timeoutMs = Number(process.env.TACHYBRIDGE_MOCK_TIMEOUT_MS ?? process.env.MOCK_ROS_TIMEOUT_MS ?? 5000);
-  const ws = connect();
+  const timeoutMs = Number(
+    process.env.TACHYBRIDGE_MOCK_TIMEOUT_MS ?? process.env.MOCK_ROS_TIMEOUT_MS ?? 5000,
+  );
+  const ws = connect(url);
 
   const timeout = setTimeout(() => {
     console.error(`[tachybridge-mock] call timeout after ${timeoutMs}ms`);
@@ -47,7 +50,7 @@ export function run(args: string[]): void {
 
   ws.on("error", (err) => {
     clearTimeout(timeout);
-    console.error(`[tachybridge-mock] call connect ${resolveUrl()} failed: ${err.message}`);
+    console.error(`[tachybridge-mock] call connect ${url} failed: ${err.message}`);
     process.exit(1);
   });
 }
